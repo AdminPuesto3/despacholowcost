@@ -1,0 +1,32 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
+
+export async function POST(req: Request) {
+  try {
+    const c = await cookies();
+    const token = c.get("token")?.value;
+    if (!token || !verifyToken(token)) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => null);
+    const raw = String(body?.posicion || "").trim().toUpperCase();
+    if (!raw) return NextResponse.json({ ok: false, error: "POSICION_VACIA" }, { status: 400 });
+
+    const row = await prisma.posicion.create({
+      data: { posicion: raw },
+    });
+
+    return NextResponse.json({ ok: true, row });
+  } catch (e: any) {
+    // si hay unique constraint, devolvemos mensaje simple
+    const msg = String(e?.message || "");
+    if (msg.toLowerCase().includes("unique") || msg.toLowerCase().includes("constraint")) {
+      return NextResponse.json({ ok: false, error: "YA_EXISTE" }, { status: 409 });
+    }
+    console.error("[POSICIONES:CREATE]", e);
+    return NextResponse.json({ ok: false, error: "ERROR_INTERNO" }, { status: 500 });
+  }
+}

@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  role      String
+  password  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Position {
+  id        Int      @id @default(autoincrement())
+  posicion  String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pendientes Pendiente[]
+}
+
+model Pendiente {
+  id Int @id @default(autoincrement())
+
+  notasRaw  String
+  notasHash String @unique
+  notas     Json
+
+  bultos       Int
+  operador     String
+  cliente      String
+  finalizadoAt DateTime?
+
+  despachadoAt DateTime?
+
+  positionId Int?
+  position   Position? @relation(fields: [positionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PedidoEnviado {
+  id          Int      @id @default(autoincrement())
+
+  // Nota escaneada
+  nota        String
+  notasHash   String?  @unique
+
+  cliente     String
+  bultos      Int
+
+  // Posición al momento de sacar
+  posicion    String
+
+  operador    String?
+  enviadoAt   DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

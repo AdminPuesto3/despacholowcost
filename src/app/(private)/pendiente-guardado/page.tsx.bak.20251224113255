@@ -1,0 +1,181 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type Row = {
+  id: number;
+  notasRaw: string;
+  bultos: number;
+  operador: string;
+  cliente: string;
+  finalizadoAt: string;
+  createdAt: string;
+};
+
+function fmt(dt: string) {
+  try {
+    return new Date(dt).toLocaleString("es-AR");
+  } catch {
+    return dt;
+  }
+}
+
+export default function PendienteGuardadoPage() {
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const help = useMemo(
+    () => `Podés escanear 1 o varias notas: 60113 o 60795/60796/60797 (máx 7)`,
+    []
+  );
+
+  async function load(query: string) {
+    setLoading(true);
+    setErr(null);
+    try {
+      const url = query?.trim()
+        ? `/api/pendiente/list?q=${encodeURIComponent(query.trim())}`
+        : `/api/pendiente/list`;
+
+      const r = await fetch(url, { method: "GET", credentials: "include" });
+      const j = await r.json().catch(() => null);
+
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+
+      setRows(j.rows || []);
+    } catch (e: any) {
+      setErr(e?.message || "Error cargando pendientes");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load("");
+  }, []);
+
+  return (
+    <div style={{ padding: 24 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Pendiente Guardado</h1>
+      <div style={{ opacity: 0.8, marginBottom: 18 }}>
+        Registro de notas finalizadas (viene del Sheets vía n8n).
+      </div>
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar / Escanear (ej: 60113 o 60795/60796/60797)"
+          style={{
+            flex: 1,
+            padding: "12px 14px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.15)",
+            background: "rgba(255,255,255,0.03)",
+            color: "white",
+            outline: "none",
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") load(q);
+          }}
+        />
+        <button
+          onClick={() => load(q)}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "none",
+            background: "#ff7a00",
+            color: "black",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Buscar
+        </button>
+        <button
+          onClick={() => {
+            setQ("");
+            load("");
+          }}
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.2)",
+            background: "transparent",
+            color: "white",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Limpiar
+        </button>
+      </div>
+
+      <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 16 }}>{help}</div>
+
+      {err && (
+        <div style={{ color: "#ff5a5a", marginBottom: 12, fontWeight: 600 }}>
+          {err}
+        </div>
+      )}
+
+      <div
+        style={{
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 12,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "90px 120px 110px 160px 1fr 200px",
+            padding: "10px 12px",
+            fontSize: 13,
+            background: "rgba(255,255,255,0.04)",
+            borderBottom: "1px solid rgba(255,255,255,0.10)",
+          }}
+        >
+          <div>ID</div>
+          <div>Nota</div>
+          <div>Bultos</div>
+          <div>Operador</div>
+          <div>Cliente</div>
+          <div>Finalizado</div>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 14, opacity: 0.8 }}>Cargando</div>
+        ) : rows.length === 0 ? (
+          <div style={{ padding: 14, opacity: 0.8 }}>Sin registros.</div>
+        ) : (
+          rows.map((r) => (
+            <div
+              key={r.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "90px 120px 110px 160px 1fr 200px",
+                padding: "10px 12px",
+                fontSize: 13,
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              <div>{r.id}</div>
+              <div>{r.notasRaw}</div>
+              <div>{r.bultos}</div>
+              <div>{r.operador}</div>
+              <div title={r.cliente} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {r.cliente}
+              </div>
+              <div>{fmt(r.finalizadoAt)}</div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

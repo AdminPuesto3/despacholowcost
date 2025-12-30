@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
+
+export async function GET() {
+  try {
+    const c = await cookies();
+    const token = c.get("token")?.value;
+    if (!token || !verifyToken(token)) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
+
+    const rows = await prisma.posicion.findMany({
+      orderBy: { id: "desc" },
+    });
+
+    return NextResponse.json({ ok: true, rows });
+  } catch (e) {
+    console.error("[POSICIONES:LIST]", e);
+    return NextResponse.json({ ok: false, error: "ERROR_INTERNO" }, { status: 500 });
+  }
+}

@@ -1,0 +1,24 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifyToken } from "@/lib/auth";
+
+export async function POST(req: Request) {
+  try {
+    const c = await cookies();
+    const token = c.get("token")?.value;
+    if (!token || !verifyToken(token)) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json().catch(() => null);
+    const id = Number(body?.id);
+    if (!id) return NextResponse.json({ ok: false, error: "ID_INVALIDO" }, { status: 400 });
+
+    await prisma.posicion.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("[POSICIONES:DELETE]", e);
+    return NextResponse.json({ ok: false, error: "ERROR_INTERNO" }, { status: 500 });
+  }
+}
