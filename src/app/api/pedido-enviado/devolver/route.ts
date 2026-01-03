@@ -10,21 +10,22 @@ export async function POST(req: Request) {
     const pedido = await prisma.pedidoEnviado.findUnique({ where: { id } });
     if (!pedido) return NextResponse.json({ ok: false, error: "NO_EXISTE" }, { status: 404 });
 
-    // 1) devolver a DESPACHO: despachadoAt -> null
+    // devolver a DESPACHO:
+    // - despachadoAt null
+    // - positionId null (para que vuelva a "sin ubicar", si aplica)
+    // - finalizadoAt null (por si tu lista filtra por finalizado)
     if (pedido.notasHash) {
       await prisma.pendiente.updateMany({
         where: { notasHash: pedido.notasHash },
-        data: { despachadoAt: null },
-      });
-    } else if (pedido.nota) {
-      // fallback cuando notasHash viene null:
-      await prisma.pendiente.updateMany({
-        where: { notasRaw: { contains: pedido.nota } },
-        data: { despachadoAt: null },
+        data: {
+          despachadoAt: null,
+          positionId: null,
+          finalizadoAt: null,
+        },
       });
     }
 
-    // 2) borrar el registro en enviados
+    // borrar el registro de enviados (así no queda duplicado)
     await prisma.pedidoEnviado.delete({ where: { id } });
 
     return NextResponse.json({ ok: true });

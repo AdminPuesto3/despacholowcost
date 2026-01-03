@@ -5,29 +5,26 @@ const PUBLIC_PATHS = [
   "/login",
   "/api/login",
   "/api/logout",
+  "/_next",
   "/favicon.ico",
   "/logo.png",
 ];
 
 function isPublic(pathname: string) {
-  if (PUBLIC_PATHS.includes(pathname)) return true;
+  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p))) return true;
+  // permitir assets comunes
   if (pathname.startsWith("/_next/")) return true;
-  if (pathname.includes(".")) return true; // assets
   return false;
 }
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // APIs no las tocamos acá (que validen en su handler si hace falta)
-  if (pathname.startsWith("/api/")) return NextResponse.next();
-
   if (isPublic(pathname)) return NextResponse.next();
 
-  const token = req.cookies.get("token")?.value;
   const session = req.cookies.get("session")?.value;
 
-  if (!token && session !== "ok") {
+  if (session !== "ok") {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
@@ -38,5 +35,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/:path*"],
+  matcher: ["/((?!_next/static|_next/image).*)"],
 };
